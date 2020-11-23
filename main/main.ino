@@ -10,13 +10,11 @@
 /// Biblioteca
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <SimpleTimer.h>
 #include <BlynkSimpleEsp32.h>
 
 /// Definindo constantes
 // Timer
-SimpleTimer timerHora;
-SimpleTimer timerMensal;
+BlynkTimer timer;
 
 // Do Blynk
 #define BLYNK_PRINT Serial
@@ -37,6 +35,7 @@ float offsetCorrente = 2.5; // tensão de saída quando a corrente é zero -> vc
 // Conta de luz
 float potenciaAtivaW[2] = {};  // vetor com as potencias ativa
 float energiaKWH[2] = {};  // QuiloWatt-hora gastos 
+float energiaTotal = 0; 
 float valorAtualConta = 0.0; // Valor final da conta de luz
 float valorFinalConta = 0.0; // Valor final da conta de luz
 float tarifaCelesc = 0.56; // Tarifa vigente em SC em reais por quilowatt-hora.
@@ -47,6 +46,10 @@ char ssid[] = "GVT-A6E1";
 char pass[] = "1965002410";
 
 /// Configurando portas virtuais Blynk App
+BLYNK_CONNECTED() {
+    Blynk.syncAll();
+}
+
 BLYNK_WRITE(V0) {
      rele1Comando = param.asInt();
      digitalWrite(rele1, rele1Comando);
@@ -89,8 +92,11 @@ void calcEnergiaKWH(){
 }
 
 void calcContaAtual(){
-  valorAtualConta = (energiaKWH[0] + energiaKWH[1]) * tarifaCelesc;
+  energiaTotal = energiaKWH[0] + energiaKWH[1];
+  valorAtualConta = energiaTotal * tarifaCelesc;
   Blynk.virtualWrite(V2, valorAtualConta);
+  Blynk.virtualWrite(V3, energiaTotal);
+  Blynk.virtualWrite(V4, valorAtualConta);
   envioDaContaFinal();
 }
 
@@ -101,11 +107,11 @@ void envioDaContaFinal(){
 void enviandoContaFinal(){
   String Mensagem = String("A sua conta de luz teve um total de ") + valorFinalConta + "reais.";
   Blynk.email("dam@edu.univali.br", "Conta de luz", Mensagem);
+  Blynk.virtualWrite(V5, valorFinalConta);
   valorAtualConta = 0;
   valorFinalConta = 0;
   energiaKWH[0] = 0;
-  energiaKWH[1] = 0;
-  
+  energiaKWH[1] = 0; 
 }
 
 /// Programa principal
@@ -118,12 +124,11 @@ void setup() {
   pinMode(rele1, OUTPUT);
   pinMode(rele2, OUTPUT);
 
-  timerHora.setInterval(3600000, calcEnergiaKWH);
-  timerMensal.setInterval(2628000000, enviandoContaFinal);
+  timer.setInterval(3600000L, calcEnergiaKWH);
+  timer.setInterval(2628000000L, enviandoContaFinal);
 }
 
 void loop() {
   Blynk.run(); // Para o App se comunicar a todo instante
-  timerHora.run();
-  timerMensal.run();
+  timer.run();
 }
