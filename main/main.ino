@@ -38,7 +38,7 @@ float energiaKWH[2] = {};  // QuiloWatt-hora gastos
 float energiaTotal = 0; 
 float valorAtualConta = 0.0; // Valor final da conta de luz
 float valorFinalConta = 0.0; // Valor final da conta de luz
-float tarifaCelesc = 0.56; // Tarifa vigente em SC em reais por quilowatt-hora.
+float tarifaCelesc = 0.50599; // Tarifa vigente em SC em reais por quilowatt-hora.
 
 /// Estas são as declarações relacionadas ao the Blynk App
 char auth[] = "_qtOUSD-l2L7iMNt5x955DfegMSkXSEi";
