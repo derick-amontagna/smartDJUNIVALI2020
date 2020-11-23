@@ -10,11 +10,17 @@
 /// Biblioteca
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <SimpleTimer.h>
 #include <BlynkSimpleEsp32.h>
 
 /// Definindo constantes
+// Timer
+SimpleTimer timer;
+
 // Do Blynk
 #define BLYNK_PRINT Serial
+int rele1pin;
+int rele2pin;
 
 // Portas
 #define sensor1 32
@@ -26,8 +32,8 @@
 int mVperAmp = 66; // use 185 para 5A ou 100 para 20A ou 66 para 30A - Sensibilidade do sensor
 int Namostras = 150; // Numero de amostras a serem somadas para se obter a leitura final
 float offsetCorrente = 2.5; // tensão de saída quando a corrente é zero -> vcc × 0.5 (2.5 v)
-float potenciaAtivaW = 0.0; // potencia ativa que irá somar todos os valores
-float energiaKWH = 0.0;  // QuiloWatt-hora gastos 
+float potenciaAtivaW[2];  // vetor com as potencias ativa
+float energiaKWH[2];  // QuiloWatt-hora gastos 
 float valorAtualConta = 0.0; // Valor final da conta de luz
 float valorFinalConta = 0.0; // Valor final da conta de luz
 float tarifaCelesc = 0.56; // Tarifa vigente em SC em reais por quilowatt-hora.
@@ -38,23 +44,46 @@ char ssid[] = "GVT-A6E1";
 char pass[] = "1965002410";
 
 /// Configurando portas virtuais Blynk App
-/// Funções
-void leituraACS712(){
-  float amostras =0.0, valorLido = 0.0, valorMedio = 0.0, tensao = 0.0, corrente = 0.0;
-  
-  for (int x = 0; x < Namostras; x++){
-    valorLido = analogRead(A0);
-    amostras = amostras + valorLido;
-  }
-  valorMedio = amostras/Namostras;
-  tensao = ((valorMedio * 5/1024.0));
-  corrente = ((tensao - offsetCorrente)/ mVperAmp);
-  potenciaAtivaW = potenciaAtivaW + tensao*corrente;
+BLYNK_WRITE(V0) {
+     rele1pin = param.asInt();
+     digitalWrite(rele1, rele1pin);
+}
+BLYNK_WRITE(V1) {
+     rele2pin = param.asInt();
+     digitalWrite(rele2, rele2pin);
 }
 
-void calcContaDeLuz(){
-  energiaKWH = (potenciaAtivaW/1000)*1;
-  valorAtualConta = energiaKWH * tarifaCelesc;
+/// Funções
+void leituraACS712(){
+  float amostras1 = 0.0, valorLido1 = 0.0, valorMedio1 = 0.0, tensao1 = 0.0, corrente1 = 0.0;
+  float amostras2 = 0.0, valorLido2 = 0.0, valorMedio2 = 0.0, tensao2 = 0.0, corrente2 = 0.0;
+  
+  for (int x = 0; x < Namostras; x++){
+    valorLido1 = analogRead(sensor1);
+    valorLido2 = analogRead(sensor2);
+    amostras1 = amostras1 + valorLido1;
+    amostras2 = amostras2 + valorLido2;
+  }
+  valorMedio1 = amostras1/Namostras;
+  valorMedio2 = amostras2/Namostras;
+  
+  tensao1 = ((valorMedio1 * 5/1024.0));
+  tensao2 = ((valorMedio2 * 5/1024.0));
+  
+  corrente1 = ((tensao1 - offsetCorrente)/ mVperAmp);
+  corrente2 = ((tensao2 - offsetCorrente)/ mVperAmp);
+  
+  potenciaAtivaW[0] = potenciaAtivaW[0] + tensao1*corrente1; 
+  potenciaAtivaW[1] = potenciaAtivaW[1] + tensao2*corrente2; 
+}
+
+void calcEnergiaKWH(){
+  energiaKWH[0] = energiaKWH[0] + (potenciaAtivaW[0]/1000)*1;
+  energiaKWH[1] = energiaKWH[1] + (potenciaAtivaW[1]/1000)*1;
+}
+
+void calcContaAtual(){
+  valorAtualConta = (energiaKWH[0] + energiaKWH[1]) * tarifaCelesc;
   envioDaContaFinal();
 }
 
@@ -71,8 +100,11 @@ void setup() {
   pinMode(sensor2, INPUT);
   pinMode(rele1, OUTPUT);
   pinMode(rele2, OUTPUT);
+
+  timer.setInterval(3600000, calcEnergiaKWH);
 }
 
 void loop() {
   Blynk.run(); // Para o App se comunicar a todo instante
+  timer.run();
 }
