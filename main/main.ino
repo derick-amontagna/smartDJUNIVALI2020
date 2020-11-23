@@ -15,7 +15,8 @@
 
 /// Definindo constantes
 // Timer
-SimpleTimer timer;
+SimpleTimer timerHora;
+SimpleTimer timerMensal;
 
 // Do Blynk
 #define BLYNK_PRINT Serial
@@ -32,8 +33,8 @@ int rele2pin;
 int mVperAmp = 66; // use 185 para 5A ou 100 para 20A ou 66 para 30A - Sensibilidade do sensor
 int Namostras = 150; // Numero de amostras a serem somadas para se obter a leitura final
 float offsetCorrente = 2.5; // tensão de saída quando a corrente é zero -> vcc × 0.5 (2.5 v)
-float potenciaAtivaW[2];  // vetor com as potencias ativa
-float energiaKWH[2];  // QuiloWatt-hora gastos 
+float potenciaAtivaW[2] = {};  // vetor com as potencias ativa
+float energiaKWH[2] = {};  // QuiloWatt-hora gastos 
 float valorAtualConta = 0.0; // Valor final da conta de luz
 float valorFinalConta = 0.0; // Valor final da conta de luz
 float tarifaCelesc = 0.56; // Tarifa vigente em SC em reais por quilowatt-hora.
@@ -80,6 +81,9 @@ void leituraACS712(){
 void calcEnergiaKWH(){
   energiaKWH[0] = energiaKWH[0] + (potenciaAtivaW[0]/1000)*1;
   energiaKWH[1] = energiaKWH[1] + (potenciaAtivaW[1]/1000)*1;
+  potenciaAtivaW[0] = 0;
+  potenciaAtivaW[1] = 0;
+  calcContaAtual();
 }
 
 void calcContaAtual(){
@@ -89,6 +93,11 @@ void calcContaAtual(){
 
 void envioDaContaFinal(){
   valorFinalConta = valorFinalConta + valorAtualConta;
+}
+
+void enviandoContaFinal(){
+  String Mensagem = String("A sua conta de luz teve um total de ") + valorFinalConta + "reais.";
+  Blynk.email("dam@edu.univali.br", "Conta de luz", Mensagem);
 }
 
 /// Programa principal
@@ -101,10 +110,12 @@ void setup() {
   pinMode(rele1, OUTPUT);
   pinMode(rele2, OUTPUT);
 
-  timer.setInterval(3600000, calcEnergiaKWH);
+  timerHora.setInterval(3600000, calcEnergiaKWH);
+  timerMensal.setInterval(2628000000, enviandoContaFinal);
 }
 
 void loop() {
   Blynk.run(); // Para o App se comunicar a todo instante
-  timer.run();
+  timerHora.run();
+  timerMensal.run();
 }
