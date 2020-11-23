@@ -20,8 +20,8 @@ SimpleTimer timerMensal;
 
 // Do Blynk
 #define BLYNK_PRINT Serial
-int rele1pin;
-int rele2pin;
+int rele1Comando;
+int rele2Comando;
 
 // Portas
 #define sensor1 32
@@ -30,9 +30,11 @@ int rele2pin;
 #define rele2 13
 
 // Do algoritmo
+// Sensor
 int mVperAmp = 66; // use 185 para 5A ou 100 para 20A ou 66 para 30A - Sensibilidade do sensor
 int Namostras = 150; // Numero de amostras a serem somadas para se obter a leitura final
 float offsetCorrente = 2.5; // tensão de saída quando a corrente é zero -> vcc × 0.5 (2.5 v)
+// Conta de luz
 float potenciaAtivaW[2] = {};  // vetor com as potencias ativa
 float energiaKWH[2] = {};  // QuiloWatt-hora gastos 
 float valorAtualConta = 0.0; // Valor final da conta de luz
@@ -46,12 +48,12 @@ char pass[] = "1965002410";
 
 /// Configurando portas virtuais Blynk App
 BLYNK_WRITE(V0) {
-     rele1pin = param.asInt();
-     digitalWrite(rele1, rele1pin);
+     rele1Comando = param.asInt();
+     digitalWrite(rele1, rele1Comando);
 }
 BLYNK_WRITE(V1) {
-     rele2pin = param.asInt();
-     digitalWrite(rele2, rele2pin);
+     rele2Comando = param.asInt();
+     digitalWrite(rele2, rele2Comando);
 }
 
 /// Funções
@@ -88,6 +90,7 @@ void calcEnergiaKWH(){
 
 void calcContaAtual(){
   valorAtualConta = (energiaKWH[0] + energiaKWH[1]) * tarifaCelesc;
+  Blynk.virtualWrite(V2, valorAtualConta);
   envioDaContaFinal();
 }
 
@@ -98,6 +101,11 @@ void envioDaContaFinal(){
 void enviandoContaFinal(){
   String Mensagem = String("A sua conta de luz teve um total de ") + valorFinalConta + "reais.";
   Blynk.email("dam@edu.univali.br", "Conta de luz", Mensagem);
+  valorAtualConta = 0;
+  valorFinalConta = 0;
+  energiaKWH[0] = 0;
+  energiaKWH[1] = 0;
+  
 }
 
 /// Programa principal
