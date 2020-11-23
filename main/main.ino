@@ -16,6 +16,12 @@
 // Do Blynk
 #define BLYNK_PRINT Serial
 
+// Portas
+#define sensor1 32
+#define sensor2 33
+#define rele1 12
+#define rele2 13
+
 // Do algoritmo
 int mVperAmp = 66; // use 185 para 5A ou 100 para 20A ou 66 para 30A - Sensibilidade do sensor
 int Namostras = 150; // Numero de amostras a serem somadas para se obter a leitura final
@@ -60,6 +66,11 @@ void envioDaContaFinal(){
 void setup() {
   Serial.begin(115200); //Inicia a comunicação serial
   Blynk.begin(auth, ssid, pass);
+
+  pinMode(sensor1, INPUT);
+  pinMode(sensor2, INPUT);
+  pinMode(rele1, OUTPUT);
+  pinMode(rele2, OUTPUT);
 }
 
 void loop() {
