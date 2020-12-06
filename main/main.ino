@@ -24,7 +24,7 @@ int rele2Comando;
 // Portas
 #define sensor1 32
 #define sensor2 33
-#define rele1 12
+#define rele1 26
 #define rele2 13
 
 // Do algoritmo
@@ -42,8 +42,8 @@ float tarifaCelesc = 0.50599; // Tarifa vigente em SC em reais por quilowatt-hor
 
 /// Estas são as declarações relacionadas ao the Blynk App
 char auth[] = "_qtOUSD-l2L7iMNt5x955DfegMSkXSEi";
-char ssid[] = "GVT-A6E1";                         
-char pass[] = "1965002410";
+char ssid[] = "SN_azevedoWifi";                         
+char pass[] = "97228552";
 
 /// Configurando portas virtuais Blynk App
 BLYNK_CONNECTED() {
@@ -52,11 +52,24 @@ BLYNK_CONNECTED() {
 
 BLYNK_WRITE(V0) {
      rele1Comando = param.asInt();
-     digitalWrite(rele1, rele1Comando);
+     if (rele1Comando == 1) {
+      digitalWrite(rele1, HIGH);
+    }
+    else {
+      digitalWrite(rele1, LOW);
+    }
+     Blynk.syncVirtual(V0); 
 }
+
 BLYNK_WRITE(V1) {
      rele2Comando = param.asInt();
-     digitalWrite(rele2, rele2Comando);
+     if (rele2Comando == 1) {
+      digitalWrite(rele2, HIGH);
+    }
+    else {
+      digitalWrite(rele2, LOW);
+    }
+     Blynk.syncVirtual(V1); 
 }
 
 /// Funções
@@ -113,6 +126,7 @@ void enviandoContaFinal(){
   energiaKWH[0] = 0;
   energiaKWH[1] = 0; 
 }
+
 
 /// Programa principal
 void setup() {
