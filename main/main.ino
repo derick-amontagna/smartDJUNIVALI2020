@@ -11,6 +11,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
+#include "ACS712.h"
 
 /// Definindo constantes
 // Timer
@@ -22,8 +23,8 @@ int rele1Comando;
 int rele2Comando;
 
 // Portas
-#define sensor1 32
-#define sensor2 33
+#define sensor1 A4
+#define sensor2 A5
 #define rele1 26
 #define rele2 25
 
@@ -33,6 +34,8 @@ int mVperAmp = 100; // use 185 para 5A ou 100 para 20A ou 66 para 30A - Sensibil
 int Namostras = 150; // Numero de amostras a serem somadas para se obter a leitura final
 float VCC = 4.82; // tensão de saída quando a corrente é zero -> vcc × 0.5 (2.5 v)
 float offsetCorrente = VCC*0.5; // tensão de saída quando a corrente é zero 
+ACS712 sensor11(ACS712_20A, sensor1);
+ACS712 sensor22(ACS712_20A, sensor2);
 
 // Conta de luz
 float potenciaAtivaW[2] = {};  // vetor com as potencias ativa
@@ -76,38 +79,19 @@ BLYNK_WRITE(V1) {
 
 /// Funções
 void leituraACS712(){
-  float amostras1 = 0.0, valorLido1 = 0.0, valorMedio1 = 0.0, valorLidoFinal1 = 0.0, corrente1 = 0.0;
-  float amostras2 = 0.0, valorLido2 = 0.0, valorMedio2 = 0.0, valorLidoFinal2 = 0.0, corrente2 = 0.0;
-  
-  for (int x = 0; x < Namostras; x++){
-    valorLido1 = analogRead(sensor1);
-    Serial.println(valorLido1);
-    valorLido2 = analogRead(sensor2);
-    amostras1 = amostras1 + valorLido1;
-    amostras2 = amostras2 + valorLido2;
-    
-  }
-  valorMedio1 = amostras1/Namostras;
-  valorMedio2 = amostras2/Namostras;
-  
-  valorLidoFinal1 = ((valorMedio1 * (VCC/4096.0)));
-  valorLidoFinal2 = ((valorMedio2 * (VCC/4096.0)));
-  
-  corrente1 = (valorLidoFinal1 - offsetCorrente)*1000;
-  corrente1 = (corrente1/ mVperAmp);
-  corrente1 = (corrente1/ 1.41421356);
-  corrente2 = (valorLidoFinal2 - offsetCorrente)*1000;
-  corrente2 = (corrente2/ mVperAmp);
-  corrente2 = (corrente2/ 1.41421356);
-
-
- // Serial.print("Valor do 1 da corrente");
- // Serial.println(corrente1);
-  //Serial.print("Valor do 2 da corrente");
-  //Serial.println(corrente2);
-  
+  if(rele2Comando == 1){
+  float corrente1 = 0, corrente2 = 0;
+  corrente1 = sensor11.getCurrentDC();
+  Serial.println("Valor da corrente1  = ");
+  Serial.println(corrente1);
   potenciaAtivaW[0] = potenciaAtivaW[0] + VCC*corrente1; 
+  }
+  if(rele1Comando == 1){
+  corrente2 = sensor22.getCurrentDC();
+  Serial.println("Valor da corrente2  = ");
+  Serial.println(corrente2);
   potenciaAtivaW[1] = potenciaAtivaW[1] + VCC*corrente2; 
+  }
 }
 
 void calcEnergiaKWH(){
@@ -156,6 +140,16 @@ void setup() {
   pinMode(rele1, OUTPUT);
   pinMode(rele2, OUTPUT);
 
+  Serial.println("Calibrating... Ensure that no current flows through the sensor at this moment");
+  int zero1 = sensor11.calibrate();
+  Serial.println("Done!");
+  Serial.println("Zero point for this sensor = " + zero1);
+
+   Serial.println("Calibrating... Ensure that no current flows through the sensor at this moment");
+  int zero2 = sensor22.calibrate();
+  Serial.println("Done!");
+  Serial.println("Zero point for this sensor = " + zero2);
+  
   timer.setInterval(60000L, calcEnergiaKWH);   // 1 mins em milisegundos 
   timer.setInterval(180000L, enviandoContaFinal);   // 3 mins em milisegundos
 }
