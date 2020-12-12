@@ -11,7 +11,6 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
-#include "ACS712.h"
 
 /// Definindo constantes
 // Timer
@@ -25,17 +24,11 @@ int rele2Comando;
 // Portas
 #define sensor1 A4
 #define sensor2 A5
-#define rele1 26
-#define rele2 25
+#define rele1 25
+#define rele2 26
 
 // Do algoritmo
-// Sensor
-int mVperAmp = 100; // use 185 para 5A ou 100 para 20A ou 66 para 30A - Sensibilidade do sensor
-int Namostras = 150; // Numero de amostras a serem somadas para se obter a leitura final
-float VCC = 4.82; // tensão de saída quando a corrente é zero -> vcc × 0.5 (2.5 v)
-float offsetCorrente = VCC*0.5; // tensão de saída quando a corrente é zero 
-ACS712 sensor11(ACS712_20A, sensor1);
-ACS712 sensor22(ACS712_20A, sensor2);
+int VCC = 5;
 
 // Conta de luz
 float potenciaAtivaW[2] = {};  // vetor com as potencias ativa
@@ -79,18 +72,33 @@ BLYNK_WRITE(V1) {
 
 /// Funções
 void leituraACS712(){
-  if(rele2Comando == 1){
-  float corrente1 = 0, corrente2 = 0;
-  corrente1 = sensor11.getCurrentDC();
-  Serial.println("Valor da corrente1  = ");
-  Serial.println(corrente1);
-  potenciaAtivaW[0] = potenciaAtivaW[0] + VCC*corrente1; 
-  }
+  double Voltage = 0;
+  double Corrente = 0;
   if(rele1Comando == 1){
-  corrente2 = sensor22.getCurrentDC();
-  Serial.println("Valor da corrente2  = ");
-  Serial.println(corrente2);
-  potenciaAtivaW[1] = potenciaAtivaW[1] + VCC*corrente2; 
+    for(int i = 0; i < 1000; i++) {
+      Voltage = (Voltage + (0.0048828125 * analogRead(sensor1))); // (5 V / 1024 (Analog) = 0.0049) which converter Measured analog input voltage to 5 V Range
+      delay(1);
+    }
+    Voltage = Voltage /1000;
+    Corrente = (Voltage - 2.5)/ 0.100;
+    potenciaAtivaW[0] = potenciaAtivaW[0] + VCC*Corrente; 
+  }
+  else{
+    Corrente = 0;
+    potenciaAtivaW[0] = potenciaAtivaW[0] + VCC*Corrente; 
+  }
+  if(rele2Comando == 1){
+    for(int i = 0; i < 1000; i++) {
+      Voltage = (Voltage + (0.0048828125 * analogRead(sensor2))); // (5 V / 1024 (Analog) = 0.0049) which converter Measured analog input voltage to 5 V Range
+      delay(1);
+  }
+    Voltage = Voltage /1000;
+    Corrente = (Voltage - 2.5)/ 0.100;
+    potenciaAtivaW[1] = potenciaAtivaW[1] + VCC*Corrente; 
+  }
+  else{
+    Corrente = 0;
+    potenciaAtivaW[1] = potenciaAtivaW[1] + VCC*Corrente; 
   }
 }
 
@@ -112,7 +120,7 @@ void calcContaAtual(){
 }
 
 void envioDaContaFinal(){
-  valorFinalConta = valorFinalConta + valorAtualConta;
+  valorFinalConta = valorAtualConta;
 }
 
 void enviandoContaFinal(){
@@ -139,19 +147,9 @@ void setup() {
   pinMode(sensor2, INPUT);
   pinMode(rele1, OUTPUT);
   pinMode(rele2, OUTPUT);
-
-  Serial.println("Calibrating... Ensure that no current flows through the sensor at this moment");
-  int zero1 = sensor11.calibrate();
-  Serial.println("Done!");
-  Serial.println("Zero point for this sensor = " + zero1);
-
-   Serial.println("Calibrating... Ensure that no current flows through the sensor at this moment");
-  int zero2 = sensor22.calibrate();
-  Serial.println("Done!");
-  Serial.println("Zero point for this sensor = " + zero2);
   
-  timer.setInterval(60000L, calcEnergiaKWH);   // 1 mins em milisegundos 
-  timer.setInterval(180000L, enviandoContaFinal);   // 3 mins em milisegundos
+  timer.setInterval(42L, calcEnergiaKWH);   // 42  milisegundos representa 1h
+  timer.setInterval(30000L, enviandoContaFinal);   // 30 segundos representa 30 dias 
 }
 
 void loop() {
